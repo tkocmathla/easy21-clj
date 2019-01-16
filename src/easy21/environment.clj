@@ -1,6 +1,4 @@
-(ns easy21.environment
-  (:require
-    [clojure.pprint :refer [pprint]]))
+(ns easy21.environment)
 
 (defn draw []
   (* (inc (rand-int 10)) (rand-nth [-1 1 1])))
@@ -15,21 +13,19 @@
     :else sum))
 
 (defn step [{:keys [dealer player] :as state} action]
-  (cond
-    (= action :hit)
-    (let [player (+ player (draw))]
-      (if (or (< player 1) (> player 21))
-        [::end -1]
-        [(assoc state :player player) 0]))
+  (condp = action
+    :hit (let [player (+ player (draw))]
+           (if (or (< player 1) (> player 21))
+             [::end -1]
+             [(assoc state :player player) 0]))
 
-    (= action :stick)
-    (let [dealer-sum (play-dealer dealer)]
-      (cond
-        (or (not (<= 1 dealer-sum 21)) (> player dealer-sum))
-        [::end 1]
+    :stick (let [dealer-sum (play-dealer dealer)]
+             (cond
+               (or (not (<= 1 dealer-sum 21)) (> player dealer-sum))
+               [::end 1]
 
-        (= dealer-sum player)
-        [::end 0]
+               (= dealer-sum player)
+               [::end 0]
 
-        (< player dealer-sum)
-        [::end -1]))))
+               (< player dealer-sum)
+               [::end -1]))))
