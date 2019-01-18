@@ -1,4 +1,13 @@
-(ns easy21.environment)
+(ns easy21.environment
+  (:require [clojure.math.combinatorics :as combo]))
+
+(def all-actions
+  [:hit :stick])
+
+(def all-states
+  (combo/cartesian-product
+    (combo/cartesian-product (range 1 11) (range 1 22))
+    all-actions))
 
 (defn draw []
   (* (inc (rand-int 10)) (rand-nth [-1 1 1])))
@@ -12,12 +21,12 @@
     ; stick
     :else sum))
 
-(defn step [{:keys [dealer player] :as state} action]
+(defn step [[dealer player] action]
   (condp = action
-    :hit (let [player (+ player (draw))]
-           (if (or (< player 1) (> player 21))
+    :hit (let [player* (+ player (draw))]
+           (if (or (< player* 1) (> player* 21))
              [::end -1]
-             [(assoc state :player player) 0]))
+             [[dealer player*] 0]))
 
     :stick (let [dealer-sum (play-dealer dealer)]
              (cond
