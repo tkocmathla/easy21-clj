@@ -30,7 +30,7 @@
 
     :stick (let [dealer-sum (play-dealer dealer)]
              (cond
-               (or (not (<= 1 dealer-sum 21)) (> player dealer-sum))
+               (> player dealer-sum)
                [::end 1]
 
                (= dealer-sum player)
