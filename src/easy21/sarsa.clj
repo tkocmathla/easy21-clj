@@ -1,6 +1,7 @@
 (ns easy21.sarsa
   "Sarsa(lambda) algorithm"
   (:require
+    [clojure.edn :as edn]
     [easy21.environment :as env]
     [easy21.policies :refer [e-greedy]]))
 
@@ -17,29 +18,36 @@
 ;;          a 2-tuple of [dealer-card player-sum]
 ;; alpha    learning rate
 ;;          controls how far to shift predicted value toward actual value
+;; delta    error
 ;; gamma    discount factor
 ;; lambda   scaling factor
 
 (defn sarsa
-  [{:keys [S A N E Q alpha gamma lambda] :as m}]
+  [{:keys [S A N Q gamma lambda] :as m}]
   (let [[S* R] (env/step S A)
         A* (e-greedy S* Q N)
-        error (+ R (* gamma (Q [S* A*] 0)) (- (Q [S A] 0)))]
-    (-> m
-        (update-in [:E [S A]] (fnil inc 0))
-        (update-in [:N [S A]] (fnil inc 0))
-        (update :Q (fn [Q] (reduce (fn [q s] (update q s (fnil + 0) (* alpha error (E s 0)))) Q env/all-states)))
-        (update :E (fn [E] (reduce (fn [e s] (update e s (fnil * 1) gamma lambda)) E env/all-states)))
-        (assoc :S S*)
-        (assoc :A A*))))
+        delta (+ R (* gamma (Q [S* A*] 0)) (- (Q [S A] 0)))
+        {:keys [E N moves] :as new-m}
+        (-> m
+            (update-in [:E [S A]] (fnil inc 0))
+            (update-in [:N [S A]] (fnil inc 0))
+            (update :moves conj [S A])
+            (assoc :S S*)
+            (assoc :A A*))]
+    (reduce
+      (fn [m move]
+        (let [alpha (/ 1.0 (N move))]
+          (-> m
+              (update-in [:Q move] (fnil + 0) (* alpha delta (E move)))
+              (update-in [:E move] * gamma lambda))))
+      new-m moves)))
 
 (defn episode [init]
   (->> {:S [(Math/abs (env/draw)) (Math/abs (env/draw))]
         :A :hit
         :E {}
-        :alpha 0.9
-        :gamma 0.9
-        :lambda 0.9}
+        :moves []
+        :gamma 0.9}
        (merge init)
        (iterate sarsa)
        (drop-while (comp not #{::env/end} :S))
@@ -47,13 +55,24 @@
 
 ;; -----------------------------------------------------------------------------
 
+#_
 (comment
-  (require
-    '[clojure.pprint :refer [pprint]]
-    '[com.stuartsierra.frequencies :as freq])
+  (require '[clojure.string :as string])
+  (set! *print-length* nil)
 
-  (let [{:keys [Q]} (->> {:Q {} :N {}} (iterate episode) (take 1000) last)]
-    ; dump summary of value function
-    (pprint (-> Q vals frequencies freq/stats))
-    ; dump states sorted by value
-    (pprint (sort-by val > Q))))
+  (let [episodes (int 1e6)
+        Q* (edn/read-string (slurp "Q.edn"))]
+    (for [lambda [0.4] #_(range 0 11/10 1/10)
+          :let [{:keys [Q]} (->> {:Q {} :N {} :lambda lambda} (iterate episode) (take episodes) last)]]
+
+      (do (prn :MSE (/ (reduce + (map (fn [k] (Math/pow (- (Q k) (Q* k)) 2)) (keys Q)))
+                       (count env/all-states)))
+
+          (->> Q
+               (map (fn [[[s a] q]] [s q]))
+               (group-by first)
+               (map (fn [[[d p] xs]] [d p (->> xs (map last) (apply max))]))
+               (map #(string/join #"," %))
+               (string/join "\n")
+               doall
+               (spit (format "Q-td-%se-%sl.csv" episodes (double lambda))))))))

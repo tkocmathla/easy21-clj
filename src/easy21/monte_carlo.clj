@@ -6,11 +6,12 @@
 
 ;; A      action
 ;;        one of #{:hit :stick}
+;; G      cumulative episode reward
 ;; N      visit count function
 ;;        a map from [S A] -> number of visits over all episodes
 ;; Q      action value function
 ;;        a map from [S A] -> value
-;; R      reward
+;; r      step reward
 ;; S,S*   state, next state
 ;;        a 2-tuple of [dealer-card player-sum]
 ;; alpha  learning rate
@@ -21,23 +22,24 @@
   (let [A (e-greedy S Q N)
         [S* R] (env/step S A)]
     (-> m
-        (assoc :S S*)
-        (update :R + R)
-        (update-in [:N [S A]] (fnil inc 0))
-        (update :moves conj [S A]))))
+        (update :SAR conj [S A R])
+        (assoc :S S*))))
 
-(defn- finish
-  [{:keys [Q N R moves] :as m}]
-  (assoc m :Q (reduce
-                (fn [Q move]
-                  (let [alpha (/ 1.0 (N move 0))]
-                    (update Q move (fnil + 0) (* alpha (- R (Q move 0))))))
-                Q moves)))
+(defn finish
+  [{:keys [SAR] :as m}]
+  (let [G (reduce + (map last SAR))]
+    (reduce
+      (fn [{:keys [Q N] :as m} [s a r]]
+        (let [alpha (/ 1 (inc (or (N [s a]) 0)))
+              q (or (Q [s a]) (rand))]
+          (-> m
+              (update-in [:N [s a]] (fnil inc 0))
+              (assoc-in [:Q [s a]] (+ q (* alpha (- r q)))))))
+      m SAR)))
 
 (defn episode [init]
   (->> {:S [(Math/abs (env/draw)) (Math/abs (env/draw))]
-        :R 0
-        :moves []}
+        :SAR []}
        (merge init)
        (iterate monte-carlo)
        (drop-while (comp not #{::env/end} :S))
@@ -47,12 +49,20 @@
 ;; -----------------------------------------------------------------------------
 
 (comment
-  (require
-    '[clojure.pprint :refer [pprint]]
-    '[com.stuartsierra.frequencies :as freq])
+  (require '[clojure.string :as string])
+  (set! *print-length* nil)
 
-  (let [{:keys [Q]} (->> {:Q {} :N {}} (iterate episode) (take 1000) last)]
-    ; dump summary of value function
-    (pprint (-> Q vals frequencies freq/stats))
-    ; dump states sorted by value
-    (pprint (sort-by val > Q))))
+  (time
+    (let [{:keys [Q]} (->> {:Q {} :N {}} (iterate episode) (take 5e6) last)]
+      ; dump the optimal value function
+      (spit "Q.edn" (pr-str Q))
+
+      ; dump csv data for plotting in python
+      (->> Q
+           (map (fn [[[s a] q]] [s q]))
+           (group-by first)
+           (map (fn [[[d p] xs]] [d p (->> xs (map last) (apply max))]))
+           (map #(string/join #"," %))
+           (string/join "\n")
+           doall
+           (spit "Q-mc-5e6.csv")))))

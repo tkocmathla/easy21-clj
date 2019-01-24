@@ -6,4 +6,5 @@
   :dependencies
   [[org.clojure/clojure "1.10.0"]
    [org.clojure/math.combinatorics "0.1.4"]
-   [com.stuartsierra/frequencies "0.1.0"]])
+   [com.stuartsierra/frequencies "0.1.0"]
+   [com.taoensso/tufte "2.0.1"]])
