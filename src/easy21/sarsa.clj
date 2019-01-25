@@ -57,22 +57,29 @@
 
 #_
 (comment
-  (require '[clojure.string :as string])
+  (require
+    '[clojure.java.io :as io]
+    '[clojure.string :as string]
+    '[clojure.data.csv :as csv])
+
   (set! *print-length* nil)
 
-  (let [episodes (int 1e6)
+  (let [episodes (int 1e4)
         Q* (edn/read-string (slurp "Q.edn"))]
-    (for [lambda [0.4] #_(range 0 11/10 1/10)
-          :let [{:keys [Q]} (->> {:Q {} :N {} :lambda lambda} (iterate episode) (take episodes) last)]]
+    (with-open [writer (io/writer "Q-td-mse.csv")]
+      (->> (for [lambda (range 0 11/10 1/10)
+               :let [{:keys [Q]} (->> {:Q {} :N {} :lambda lambda} (iterate episode) (take episodes) last)]]
 
-      (do (prn :MSE (/ (reduce + (map (fn [k] (Math/pow (- (Q k) (Q* k)) 2)) (keys Q)))
-                       (count env/all-states)))
+           (do (->> Q
+                    (map (fn [[[s a] q]] [s q]))
+                    (group-by first)
+                    (map (fn [[[d p] xs]] [d p (->> xs (map last) (apply max))]))
+                    (map #(string/join #"," %))
+                    (string/join "\n")
+                    doall
+                    (spit (format "Q-td-%se-%sl.csv" episodes (double lambda))))
 
-          (->> Q
-               (map (fn [[[s a] q]] [s q]))
-               (group-by first)
-               (map (fn [[[d p] xs]] [d p (->> xs (map last) (apply max))]))
-               (map #(string/join #"," %))
-               (string/join "\n")
-               doall
-               (spit (format "Q-td-%se-%sl.csv" episodes (double lambda))))))))
+               [lambda
+                (/ (reduce + (map (fn [k] (Math/pow (- (Q k) (Q* k)) 2)) (keys Q)))
+                   (count env/all-states))]))
+         (csv/write-csv writer)))))

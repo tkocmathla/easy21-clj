@@ -52,17 +52,16 @@
   (require '[clojure.string :as string])
   (set! *print-length* nil)
 
-  (time
-    (let [{:keys [Q]} (->> {:Q {} :N {}} (iterate episode) (take 5e6) last)]
-      ; dump the optimal value function
-      (spit "Q.edn" (pr-str Q))
+  (let [{:keys [Q]} (->> {:Q {} :N {}} (iterate episode) (take 5e6) last)]
+    ; dump the optimal value function
+    (spit "Q.edn" (pr-str Q))
 
-      ; dump csv data for plotting in python
-      (->> Q
-           (map (fn [[[s a] q]] [s q]))
-           (group-by first)
-           (map (fn [[[d p] xs]] [d p (->> xs (map last) (apply max))]))
-           (map #(string/join #"," %))
-           (string/join "\n")
-           doall
-           (spit "Q-mc-5e6.csv")))))
+    ; dump csv data for plotting in python
+    (->> Q
+         (map (fn [[[s a] q]] [s q]))
+         (group-by first)
+         (map (fn [[[d p] xs]] [d p (->> xs (map last) (apply max))]))
+         (map #(string/join #"," %))
+         (string/join "\n")
+         doall
+         (spit "Q-mc-5e6.csv"))))
