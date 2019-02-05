@@ -1,6 +1,7 @@
 (ns easy21.monte-carlo
   "Monte Carlo algorithm"
   (:require
+    [clojure.edn :as edn]
     [easy21.environment :as env]
     [easy21.policies :refer [e-greedy]]))
 
@@ -42,11 +43,33 @@
         :SAR []}
        (merge init)
        (iterate monte-carlo)
-       (drop-while (comp not #{::env/end} :S))
+       (drop-while (comp not env/end? :S))
        first
        finish))
 
 ;; -----------------------------------------------------------------------------
+;; Inference
+
+(defn infer [{:keys [S Q] :as m}]
+  (let [A (max-key #(Q [S %]) :hit :stick)
+        [S* R] (env/step S A)]
+    (assoc m :S S* :R R)))
+
+(defn play [Q]
+  (->> {:S [(Math/abs (env/draw)) (Math/abs (env/draw))]
+        :Q Q}
+       (iterate infer)
+       (drop-while (comp not env/end? :S))
+       first))
+
+;; -----------------------------------------------------------------------------
+
+; play a bunch of games and summarize the outcomes
+#_
+(let [Q (edn/read-string (slurp "Q.edn"))]
+  (frequencies
+    (for [_ (range 1e3)]
+      (:R (play Q)))))
 
 (comment
   (require '[clojure.string :as string])
