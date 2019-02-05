@@ -1,4 +1,5 @@
 (ns easy21.lfa
+  "Linear function approximation"
   (:require
     [easy21.environment :as env]
     [clojure.core.matrix.operators :as ops])
@@ -26,14 +27,11 @@
     (rand-nth env/all-actions)
     (max-key #(Q S % w) :hit :stick)))
 
-(defn end? [S]
-  (#{::env/end} S))
-
 (defn sarsa
   [{:keys [S A E alpha gamma lambda w] :as m}]
   (let [[S* R] (env/step S A)
-        A* (when-not (end? S*) (e-greedy m))
-        delta (if-not (end? S*)
+        A* (when-not (env/end? S*) (e-greedy m))
+        delta (if-not (env/end? S*)
                 (+ R (* gamma (Q S* A* w)) (- (Q S A w)))
                 (- R (Q S A w)))
         X (features [S A])
@@ -53,7 +51,7 @@
         :gamma 1}
        (merge init)
        (iterate sarsa)
-       (drop-while (comp not end? :S))
+       (drop-while (comp not env/end? :S))
        first))
 
 ;; -----------------------------------------------------------------------------
