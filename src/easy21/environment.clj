@@ -9,6 +9,8 @@
     (combo/cartesian-product (range 1 11) (range 1 22))
     all-actions))
 
+(def end? #{::end})
+
 (defn draw []
   (* (inc (rand-int 10)) (rand-nth [-1 1 1])))
 
