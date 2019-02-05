@@ -9,5 +9,7 @@
    [org.clojure/math.combinatorics "0.1.4"]
    [com.stuartsierra/frequencies "0.1.0"]
    [com.taoensso/tufte "2.0.1"]
-   [net.mikera/core.matrix "0.62.0"]
-   [net.mikera/vectorz-clj "0.48.0"]])
+   ;[net.mikera/core.matrix "0.62.0"]
+   [net.mikera/vectorz-clj "0.48.0"]
+   [thinktopic/experiment "0.9.23-SNAPSHOT"]
+   ])
