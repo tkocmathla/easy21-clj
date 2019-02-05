@@ -50,12 +50,11 @@
         :gamma 0.9}
        (merge init)
        (iterate sarsa)
-       (drop-while (comp not #{::env/end} :S))
+       (drop-while (comp not env/end? :S))
        first))
 
 ;; -----------------------------------------------------------------------------
 
-#_
 (comment
   (require
     '[clojure.java.io :as io]
